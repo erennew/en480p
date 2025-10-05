@@ -11,12 +11,17 @@ from datetime import datetime
 from pyrogram import Client
 
 from tobrot import DOWNLOAD_LOCATION
-from tobrot.helper_funcs.display_progress_g import progress_for_pyrogram_g
 from tobrot.helper_funcs.upload_to_tg import upload_to_gdrive
 from tobrot.helper_funcs.create_compressed_archive import unzip_me, unrar_me, untar_me
 
 # Import the unified progress functions
-from display_progress import progress_for_pyrogram, progress_for_torrent
+from bot.helper_funcs.display_progress import progress_for_pyrogram, progress_for_torrent, humanbytes
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # Import LibTorrent downloader
 try:
@@ -122,6 +127,12 @@ async def download_media_f(client, message):
     Unified download function for both media files and magnet links
     """
     user_id = message.from_user.id
+    
+    # Check authorization
+    from bot import AUTH_USERS
+    if user_id not in AUTH_USERS:
+        return await message.reply_text("<blockquote>You are not authorised to use this bot.</blockquote>")
+    
     mess_age = await message.reply_text("🔄 Processing...", quote=True)
     
     if not os.path.isdir(DOWNLOAD_LOCATION):
@@ -132,41 +143,22 @@ async def download_media_f(client, message):
     # Check if it's a magnet link command
     if message.command and message.command[0] == "magnet" and len(message.command) > 1:
         await handle_magnet_download(client, message, mess_age, user_id, start_time)
-    # Check if it's a reply to media
+    # Check if it's a reply to media for compression
     elif message.reply_to_message is not None:
-        await handle_media_download(client, message, mess_age, user_id, start_time)
+        await handle_compress_download(client, message, mess_age, user_id, start_time)
     else:
-        await mess_age.edit_text("❌ Please reply to a media file or use /magnet with a magnet link.")
+        await mess_age.edit_text("❌ Please reply to a media file for compression or use /magnet with a magnet link.")
 
 
-async def handle_media_download(client, message, mess_age, user_id, start_time):
-    """Handle media file downloads"""
+async def handle_compress_download(client, message, mess_age, user_id, start_time):
+    """Handle media file downloads for compression"""
     try:
-        download_location = DOWNLOAD_LOCATION + "/"
-        c_time = time.time()
-        
-        the_real_download_location = await client.download_media(
-            message=message.reply_to_message,
-            file_name=download_location,
-            progress=progress_for_pyrogram_g,
-            progress_args=(
-                "📥 Downloading from Telegram", 
-                mess_age, 
-                c_time
-            )
-        )
-        
-        end_t = datetime.now()
-        ms = (end_t - datetime.fromtimestamp(start_time)).seconds
-        
-        await mess_age.edit_text(f"✅ Downloaded to `{the_real_download_location}` in {ms} seconds")
-        
-        # Move file and process
-        await process_downloaded_file(client, message, mess_age, user_id, the_real_download_location)
-        
+        from bot.plugins.incoming_message_fn import incoming_compress_message_f
+        await incoming_compress_message_f(message.reply_to_message)
+        await mess_age.delete()
     except Exception as e:
-        await mess_age.edit_text(f"❌ Download failed: {str(e)}")
-        logger.error(f"Media download error: {e}")
+        await mess_age.edit_text(f"❌ Compression failed: {str(e)}")
+        logger.error(f"Compression error: {e}")
 
 
 async def handle_magnet_download(client, message, mess_age, user_id, start_time):
@@ -225,37 +217,6 @@ async def handle_magnet_download(client, message, mess_age, user_id, start_time)
             downloader.stop_download()
 
 
-async def process_downloaded_file(client, message, mess_age, user_id, file_path):
-    """Process downloaded media files"""
-    try:
-        # Move file to app directory
-        gk = subprocess.Popen(['mv', f'{file_path}', '/app/'], stdout=subprocess.PIPE)
-        out = gk.communicate()
-        file_name = os.path.basename(file_path)
-        
-        # Handle extraction commands
-        if len(message.command) > 1:
-            if message.command[1] == "unzip":
-                extracted_path = await unzip_me(file_name)
-                if extracted_path:
-                    await upload_to_gdrive(extracted_path, mess_age, message, user_id)
-            elif message.command[1] == "unrar":
-                extracted_path = await unrar_me(file_name)
-                if extracted_path:
-                    await upload_to_gdrive(extracted_path, mess_age, message, user_id)
-            elif message.command[1] == "untar":
-                extracted_path = await untar_me(file_name)
-                if extracted_path:
-                    await upload_to_gdrive(extracted_path, mess_age, message, user_id)
-        else:
-            # Direct upload
-            await upload_to_gdrive(file_name, mess_age, message, user_id)
-            
-    except Exception as e:
-        await mess_age.edit_text(f"❌ File processing failed: {str(e)}")
-        logger.error(f"File processing error: {e}")
-
-
 async def process_torrent_files(client, message, mess_age, user_id, download_path):
     """Process downloaded torrent files"""
     try:
@@ -307,5 +268,7 @@ async def process_torrent_files(client, message, mess_age, user_id, download_pat
         logger.error(f"Torrent file processing error: {e}")
 
 
-# Backward compatibility
-down_load_media_f = download_media_f
+# Backward compatibility functions
+async def down_load_media_f(client, message):
+    """Backward compatibility"""
+    await download_media_f(client, message)
