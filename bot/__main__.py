@@ -1,4 +1,3 @@
-# oof
 from datetime import datetime as dt
 import os
 from bot.helper_funcs.ffmpeg import media_info, take_screen_shot
@@ -32,9 +31,9 @@ from pyrogram.handlers import MessageHandler, CallbackQueryHandler
 from bot.plugins.incoming_message_fn import (
     incoming_start_message_f,
     incoming_compress_message_f,
-    incoming_cancel_message_f
+    incoming_cancel_message_f,
+    download_magnet_f
 )
-
 
 from bot.plugins.status_message_fn import (
     eval_message_f,
@@ -44,16 +43,16 @@ from bot.plugins.status_message_fn import (
 
 from bot.commands import Command
 from bot.plugins.call_back_button_handler import button
+
+# Import the unified download function
+from bot.plugins.download import download_media_f
+
 sudo_users = "5090651635" 
 crf.append("25")
 codec.append("libx264")
 resolution.append("854x480")
 preset.append("veryfast")
 audio_b.append("64k")
-#name.append("Free Edu Care")
-#size.append("17")
-# 🤣
-
 
 uptime = dt.now()
 
@@ -76,13 +75,7 @@ if __name__ == "__main__" :
     # create download directory, if not exist
     if not os.path.isdir(DOWNLOAD_LOCATION):
         os.makedirs(DOWNLOAD_LOCATION)
-    #
     
-    
-    #
-    #
-    # STATUS ADMIN Command
-
     # START command
     incoming_start_message_handler = MessageHandler(
         incoming_start_message_f,
@@ -90,6 +83,10 @@ if __name__ == "__main__" :
     )
     app.add_handler(incoming_start_message_handler)
     
+    # MAGNET command
+    @app.on_message(filters.incoming & filters.command(["magnet", f"magnet@{BOT_USERNAME}"]))
+    async def magnet_command(app, message):
+        await download_media_f(app, message)
     
     @app.on_message(filters.incoming & filters.command(["crf", f"crf@{BOT_USERNAME}"]))
     async def changecrf(app, message):
@@ -179,7 +176,7 @@ if __name__ == "__main__" :
             
         
     @app.on_message(filters.incoming & filters.command(["compress", f"compress@{BOT_USERNAME}"]))
-    async def help_message(app, message):
+    async def compress_command(app, message):
         if message.chat.id not in AUTH_USERS:
             return await message.reply_text("<blockquote>You are not authorised to use this bot.</blockquote>")
         query = await message.reply_text("<blockquote>ᴀᴅᴅᴇᴅ ᴛᴏ ǫᴜᴇᴜᴇ...\nᴘʟᴇᴀsᴇ ʙᴇ ᴘᴀᴛɪᴇɴᴛ ʏᴏᴜ ᴇɴᴄᴏᴅᴇ ᴡɪʟʟ sᴛᴀʀᴛ sᴏᴏɴ</blockquote>", quote=True)
@@ -202,17 +199,6 @@ if __name__ == "__main__" :
         else:
             await message.reply_text("<blockquote><b>Admin Only</b> 💀</blockquote>")
 
-    # @app.on_message(filters.incoming & (filters.video | filters.document))
-    # async def help_message(app, message):
-    #     if message.chat.id not in AUTH_USERS:
-    #         return await message.reply_text("<blockquote>You are not authorised to use this bot contact Vegapunk</blockquote>")
-    #     query = await message.reply_text("<blockquote>Added to Queue ⏰...\nPlease be patient, Compress will start soon</blockquote>", quote=True)
-    #     data.append(message)
-    #     if len(data) == 1:
-    #      await query.delete()   
-    #      await add_task(message)
-
-       
     @app.on_message(filters.incoming & filters.command(["cancel", f"cancel@{BOT_USERNAME}"]))
     async def help_message(app, message):
         await incoming_cancel_message_f(app, message)
@@ -237,6 +223,7 @@ if __name__ == "__main__" :
     @app.on_message(filters.incoming & filters.command(["log", f"log@{BOT_USERNAME}"]))
     async def help_message(app, message):
         await upload_log_file(app, message)
+        
     @app.on_message(filters.incoming & filters.command(["ping", f"ping@{BOT_USERNAME}"]))
     async def up(app, message):
       stt = dt.now()
