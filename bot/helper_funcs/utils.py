@@ -1,4 +1,3 @@
-
 # the logging things
 import logging
 logging.basicConfig(
@@ -21,14 +20,16 @@ def checkKey(dict, key):
     return False
 
 async def on_task_complete():
-    del data[0]
     if len(data) > 0:
-      await add_task(data[0])
+        del data[0]
+    if len(data) > 0:
+        await add_task(data[0])
 
 async def add_task(message: Message):
     try:
+        # Cleanup downloads directory
         os.system('rm -rf /app/downloads/*')
         await incoming_compress_message_f(message)
     except Exception as e:
-        LOGGER.info(e)  
+        LOGGER.error(f"Error in add_task: {e}")  
     await on_task_complete()
