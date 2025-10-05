@@ -17,7 +17,8 @@ from bot.helper_funcs.ffmpeg import (
 )
 from bot.helper_funcs.display_progress import (
     progress_for_pyrogram,
-    TimeFormatter
+    TimeFormatter,
+    humanbytes
 )
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -163,3 +164,18 @@ async def incoming_cancel_message_f(bot, update):
             text="No active compression exists",
             reply_to_message_id=update.id
         )
+
+async def download_magnet_f(client, message):
+    """Handle magnet link downloads"""
+    from bot.plugins.download import handle_magnet_download
+    user_id = message.from_user.id
+    if user_id not in AUTH_USERS:
+        return await message.reply_text("<blockquote>You are not authorised to use this bot.</blockquote>")
+    
+    if len(message.command) < 2:
+        return await message.reply_text("<blockquote>Please provide a magnet link after the command.\nExample: <code>/magnet magnet:?xt=urn:btih:...</code></blockquote>")
+    
+    mess_age = await message.reply_text("🔄 Processing magnet link...", quote=True)
+    start_time = time.time()
+    
+    await handle_magnet_download(client, message, mess_age, user_id, start_time)
